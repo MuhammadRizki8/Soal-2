@@ -1,5 +1,5 @@
 import { NextApiRequest, NextApiResponse } from 'next';
-import { withAuth } from '../../../../../../src/middleware';
+import { withAuth } from '@/src/middleware';
 import { PrismaClient } from '@prisma/client';
 import formidable, { File as FormidableFile } from 'formidable';
 import fs from 'fs';
@@ -29,7 +29,7 @@ async function handler(req: NextApiRequest & { session?: any }, res: NextApiResp
 
   const form = formidable({ multiples: true, uploadDir, keepExtensions: true });
 
-  form.parse(req, async (err, fields, files) => {
+  form.parse(req, async (err: any, fields: any, files: any) => {
     if (err) {
       console.error('Form parse error', err);
       return res.status(500).json({ error: 'Upload error' });

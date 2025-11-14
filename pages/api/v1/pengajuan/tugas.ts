@@ -9,26 +9,29 @@ async function handler(req: NextApiRequest & { session?: any }, res: NextApiResp
 
   const session = req.session;
   if (!session) return res.status(401).json({ error: 'Unauthorized' });
-  if (session.role !== 'SALES') return res.status(403).json({ error: 'Forbidden' });
+  if (!['MARKETING', 'ATASAN_MARKETING'].includes(session.role)) return res.status(403).json({ error: 'Forbidden' });
 
   try {
+    const statusToFetch = session.role === 'MARKETING' ? 'BARU_DISUBMIT_SALES' : 'DIVERIFIKASI_MK';
+
     const pengajuans = await prisma.pengajuanKredit.findMany({
-      where: { salesDealerId: session.userId },
-      orderBy: { createdAt: 'desc' },
+      where: { status: statusToFetch },
+      orderBy: { createdAt: 'asc' },
       include: {
         dataKonsumen: true,
         dataKendaraan: true,
         dataPinjaman: true,
         dokumen: true,
         histori: { orderBy: { timestamp: 'desc' } },
+        salesDealer: { select: { id: true, username: true, nama_sales: true, nama_dealer: true } },
       },
     });
 
     return res.status(200).json({ ok: true, data: pengajuans });
   } catch (err: any) {
-    console.error('Fetch pengajuan saya error', err);
+    console.error('Fetch tugas error', err);
     return res.status(500).json({ error: 'Internal server error', details: err.message });
   }
 }
 
-export default withAuth(handler, ['SALES']);
+export default withAuth(handler, ['MARKETING', 'ATASAN_MARKETING']);

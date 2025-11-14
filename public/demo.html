@@ -1,0 +1,206 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <title>PT JKL API Demo</title>
+    <style>
+      body {
+        <!doctype html>
+        <html lang="en">
+          <head>
+            <meta charset="utf-8" />
+            <meta name="viewport" content="width=device-width,initial-scale=1" />
+            <title>PT JKL — API Demo</title>
+            <style>
+              :root{
+                --bg:#f7fafc; --card:#ffffff; --muted:#6b7280; --accent:#0ea5a4; --danger:#ef4444;
+              }
+              *{box-sizing:border-box}
+              body{font-family:Inter,ui-sans-serif,system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial; background:var(--bg); margin:0; padding:24px}
+              .container{max-width:1100px;margin:0 auto}
+              header{display:flex;align-items:center;gap:12px;margin-bottom:18px}
+              .brand{font-weight:700;font-size:18px}
+              .grid{display:grid;grid-template-columns:1fr 360px;gap:16px}
+              .card{background:var(--card);border-radius:8px;padding:14px;border:1px solid #e6edf0;box-shadow:0 1px 2px rgba(16,24,40,0.03)}
+              label{display:block;font-size:13px;color:var(--muted);margin-bottom:6px}
+              input[type=text], input[type=file], textarea{width:100%;padding:10px;border:1px solid #e6edf0;border-radius:6px}
+              textarea{min-height:140px;font-family:monospace}
+              .btn{display:inline-block;padding:8px 12px;border-radius:6px;border:none;background:var(--accent);color:white;cursor:pointer}
+              .btn.secondary{background:#64748b}
+              .btn.ghost{background:transparent;color:var(--accent);border:1px solid rgba(14,165,164,0.12)}
+              .row{display:flex;gap:8px;align-items:center}
+              h1,h2,h3{margin:0 0 8px}
+              .muted{color:var(--muted);font-size:13px}
+              pre{background:#0f172a;color:#e6f6f6;padding:12px;border-radius:6px;overflow:auto}
+              .out-meta{font-size:13px;color:var(--muted);margin-bottom:8px}
+              .small{font-size:13px}
+              @media(max-width:920px){ .grid{grid-template-columns:1fr} }
+            </style>
+          </head>
+          <body>
+            <div class="container">
+              <header>
+                <div class="brand">PT JKL — API Demo</div>
+                <div class="muted">Interactive demo to exercise API endpoints during development</div>
+              </header>
+
+              <div class="grid">
+                <div>
+                  <section class="card" style="margin-bottom:12px">
+                    <label>Authorization (JWT)</label>
+                    <div class="row">
+                      <input id="token" type="text" placeholder="Paste or issue a token (dev)" />
+                      <button class="btn ghost" onclick="copyToken()">Copy</button>
+                    </div>
+                    <div style="margin-top:8px" class="small muted">Use <code>/api/debug/token</code> to generate tokens for seeded users in development.</div>
+                    <div style="margin-top:10px" class="row">
+                      <input id="devUsername" type="text" placeholder="seeded username (e.g. sales_dealer_A)" />
+                      <button class="btn" onclick="issueToken()">Issue Token</button>
+                    </div>
+                  </section>
+
+                  <section class="card" style="margin-bottom:12px">
+                    <h3>Sales — Submit Pengajuan</h3>
+                    <div class="muted">Submit a full pengajuan (Data Konsumen, Kendaraan, Pinjaman)</div>
+                    <label>Payload (JSON)</label>
+                    <textarea id="submitBody">{
+          "dataKonsumen": { "nama": "Ujang", "nik": "1234567890", "tanggalLahir": "1990-01-01", "statusPerkawinan": "Single" },
+          "dataKendaraan": { "dealer": "Dealer A", "merkKendaraan": "Toyota", "modelKendaraan": "Avanza", "tipeKendaraan": "Type X", "warnaKendaraan": "Hitam", "hargaKendaraan": 150000000 },
+          "dataPinjaman": { "asuransi": "Standard", "downPayment": 15000000, "lamaKreditBulan": 36, "angsuranBulanan": 4000000 }
+        }</textarea>
+                    <div class="row" style="margin-top:8px">
+                      <button class="btn" onclick="submitPengajuan()">Submit Pengajuan</button>
+                      <button class="btn secondary" onclick="getMyPengajuan()">My Pengajuan</button>
+                      <button class="btn ghost" onclick="getTugas()">Get Tugas</button>
+                    </div>
+                  </section>
+
+                  <section class="card" style="margin-bottom:12px">
+                    <h3>File Upload</h3>
+                    <label>Pengajuan ID</label>
+                    <input id="uploadPengajuanId" type="text" placeholder="Pengajuan ID for upload" />
+                    <label>Files</label>
+                    <input id="fileInput" type="file" multiple />
+                    <label>Jenis Dokumen</label>
+                    <input id="jenisDokumen" type="text" placeholder="KTP, SPK, dll." />
+                    <div style="margin-top:8px" class="row">
+                      <button class="btn" onclick="uploadFiles()">Upload Files</button>
+                    </div>
+                  </section>
+
+                  <section class="card">
+                    <h3>Detail / Actions</h3>
+                    <label>Pengajuan ID</label>
+                    <input id="detailId" type="text" placeholder="Pengajuan ID" />
+                    <div style="margin-top:8px" class="row">
+                      <button class="btn" onclick="getDetail()">Get Detail</button>
+                      <button class="btn" onclick="doTindakan('SETUJU')">SETUJU</button>
+                      <button class="btn secondary" onclick="doTindakan('REVISI')">REVISI</button>
+                      <button class="btn" style="background:var(--danger)" onclick="doTindakan('TOLAK')">TOLAK</button>
+                    </div>
+                  </section>
+                </div>
+
+                <aside>
+                  <section class="card" style="margin-bottom:12px">
+                    <h3>Admin Actions</h3>
+                    <label>Pengajuan ID</label>
+                    <input id="adminId" type="text" placeholder="Pengajuan ID for admin actions" />
+                    <div style="margin-top:8px" class="row">
+                      <button class="btn" onclick="adminKirim()">Kirim Dokumen</button>
+                      <button class="btn secondary" onclick="adminCairkan()">Cairkan</button>
+                    </div>
+                    <div class="muted small" style="margin-top:8px">Admin endpoints require <code>ADMIN_BACKOFFICE</code> role.</div>
+                  </section>
+
+                  <section class="card">
+                    <h3>Output</h3>
+                    <div class="out-meta" id="outMeta">Status: —</div>
+                    <pre id="out">(responses will appear here)</pre>
+                  </section>
+                </aside>
+              </div>
+            </div>
+
+            <script>
+              const outEl = document.getElementById('out');
+              const metaEl = document.getElementById('outMeta');
+
+              function setOut(obj, status) {
+                metaEl.textContent = 'Status: ' + (status ?? '—');
+                try { outEl.textContent = JSON.stringify(obj, null, 2); } catch (e) { outEl.textContent = String(obj); }
+              }
+
+              function getAuthHeaders() {
+                const t = document.getElementById('token').value.trim();
+                const headers = {};
+                if (t) headers['Authorization'] = 'Bearer ' + t;
+                return headers;
+              }
+
+              async function issueToken(){
+                const username = document.getElementById('devUsername').value.trim();
+                if(!username){ setOut({ error: 'set username' }); return; }
+                const r = await fetch('/api/debug/token', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ username }) });
+                const json = await r.json();
+                if(json?.token) document.getElementById('token').value = json.token;
+                setOut(json, r.status);
+              }
+
+              function copyToken(){ const t = document.getElementById('token').value.trim(); if(!t) return alert('No token'); navigator.clipboard.writeText(t); alert('Token copied'); }
+
+              async function submitPengajuan(){
+                let body;
+                try { body = JSON.parse(document.getElementById('submitBody').value); } catch(e){ return setOut({ error: 'Invalid JSON' }); }
+                const r = await fetch('/api/v1/pengajuan', { method:'POST', headers: Object.assign({'Content-Type':'application/json'}, getAuthHeaders()), body: JSON.stringify(body) });
+                const json = await r.json(); setOut(json, r.status);
+              }
+
+              async function getMyPengajuan(){ const r = await fetch('/api/v1/pengajuan/saya', { headers: getAuthHeaders() }); setOut(await r.json(), r.status); }
+              async function getTugas(){ const r = await fetch('/api/v1/pengajuan/tugas', { headers: getAuthHeaders() }); setOut(await r.json(), r.status); }
+
+              async function uploadFiles(){
+                const id = document.getElementById('uploadPengajuanId').value.trim(); if(!id) return setOut({ error: 'set pengajuan id' });
+                const files = document.getElementById('fileInput').files; if(!files || files.length===0) return setOut({ error: 'choose file(s)' });
+                const form = new FormData(); for (const f of files) form.append('file', f, f.name);
+                form.append('jenisDokumen', document.getElementById('jenisDokumen').value || 'UNKNOWN');
+                const r = await fetch('/api/v1/pengajuan/'+id+'/upload', { method:'POST', headers: getAuthHeaders(), body: form });
+                setOut(await r.json(), r.status);
+              }
+
+              async function getDetail(){ const id = document.getElementById('detailId').value.trim(); if(!id) return setOut({ error:'set id' }); const r = await fetch('/api/v1/pengajuan/'+id, { headers: getAuthHeaders() }); setOut(await r.json(), r.status); }
+
+              async function doTindakan(action){ const id = document.getElementById('detailId').value.trim(); if(!id) return setOut({ error:'set id' }); const r = await fetch('/api/v1/pengajuan/'+id+'/tindakan', { method:'PUT', headers: Object.assign({'Content-Type':'application/json'}, getAuthHeaders()), body: JSON.stringify({ tindakan: action, catatan: 'Demo action '+action }) }); setOut(await r.json(), r.status); }
+
+              async function adminKirim(){ const id = document.getElementById('adminId').value.trim(); if(!id) return setOut({ error:'set id' }); const r = await fetch('/api/v1/admin/pengajuan/'+id+'/kirim-dokumen', { method:'POST', headers: getAuthHeaders() }); setOut(await r.json(), r.status); }
+              async function adminCairkan(){ const id = document.getElementById('adminId').value.trim(); if(!id) return setOut({ error:'set id' }); const r = await fetch('/api/v1/admin/pengajuan/'+id+'/cairkan', { method:'POST', headers: getAuthHeaders() }); setOut(await r.json(), r.status); }
+            </script>
+          </body>
+        </html>
+          return;
+        }
+        const r = await fetch('/api/v1/pengajuan/' + id + '/tindakan', { method: 'PUT', headers: { 'Content-Type': 'application/json', ...getAuth() }, body: JSON.stringify({ tindakan: action, catatan: 'Demo action ' + action }) });
+        setOut(await r.json());
+      }
+
+      async function adminKirim() {
+        const id = document.getElementById('adminId').value.trim();
+        if (!id) {
+          setOut({ error: 'set id' });
+          return;
+        }
+        const r = await fetch('/api/v1/admin/pengajuan/' + id + '/kirim-dokumen', { method: 'POST', headers: getAuth() });
+        setOut(await r.json());
+      }
+      async function adminCairkan() {
+        const id = document.getElementById('adminId').value.trim();
+        if (!id) {
+          setOut({ error: 'set id' });
+          return;
+        }
+        const r = await fetch('/api/v1/admin/pengajuan/' + id + '/cairkan', { method: 'POST', headers: getAuth() });
+        setOut(await r.json());
+      }
+    </script>
+  </body>
+</html>
