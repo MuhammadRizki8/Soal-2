@@ -1,0 +1,160 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+// ===========================================
+// SKEMA DATABASE APLIKASI KREDIT PT. JKL
+// ===========================================
+
+// --- Enum untuk Status dan Role ---
+// Enum ini penting untuk melacak progres pengajuan
+enum StatusPengajuan {
+  BARU_DISUBMIT_SALES // Sales baru submit, tunggu verifikasi Marketing
+  PERLU_REVISI_SALES  // Marketing/Atasan mengembalikan ke Sales
+  DIVERIFIKASI_MK     // Marketing sudah OK, tunggu Atasan
+  DISETUJUI_ATASAN    // Atasan sudah OK, tunggu Admin Backoffice
+  DITOLAK
+  PROSES_TTE          // Admin Backoffice generate PDF & kirim TTE
+  PROSES_PENCAIRAN    // Semua TTE lengkap, siap cair
+  SELESAI             // Dana cair
+}
+
+// Enum untuk role pengguna internal
+enum RoleInternal {
+  MARKETING
+  ATASAN_MARKETING
+  ADMIN_BACKOFFICE
+}
+
+// --- Model Tabel ---
+
+// Model untuk Pengguna Internal (Marketing, Atasan, Admin)
+model UserInternal {
+  id            String  @id @default(cuid())
+  username      String  @unique
+  password_hash String
+  nama_lengkap  String
+  role          RoleInternal
+  
+  // Relasi: Siapa yang memverifikasi/menyetujui
+  pengajuanDiverifikasi PengajuanKredit[] @relation("DiverifikasiOleh")
+  pengajuanDisetujui  PengajuanKredit[] @relation("DisetujuiOleh")
+}
+
+// Model untuk Pengguna Eksternal (Sales Dealer)
+// Dibuat terpisah karena hak aksesnya sangat berbeda
+model SalesDealer {
+  id            String  @id @default(cuid())
+  username      String  @unique
+  password_hash String
+  nama_dealer   String
+  nama_sales    String
+
+  // Relasi: Pengajuan yang dibuat oleh sales ini
+  pengajuan     PengajuanKredit[]
+}
+
+// Model ini adalah "meja" utama alur kerja
+model PengajuanKredit {
+  id            String          @id @default(cuid())
+  status        StatusPengajuan @default(BARU_DISUBMIT_SALES)
+  createdAt     DateTime        @default(now())
+  updatedAt     DateTime        @updatedAt
+  
+  // --- Relasi Pelaku ---
+  // Dibuat oleh siapa?
+  salesDealerId String
+  salesDealer   SalesDealer @relation(fields: [salesDealerId], references: [id])
+  
+  // Diverifikasi oleh siapa? (Marketing)
+  marketingId   String?
+  marketing     UserInternal? @relation("DiverifikasiOleh", fields: [marketingId], references: [id])
+
+  // Disetujui oleh siapa? (Atasan)
+  atasanId      String?
+  atasan        UserInternal? @relation("DisetujuiOleh", fields: [atasanId], references: [id])
+
+  // --- Relasi Data (One-to-One) ---
+  // Data pengajuan dipecah agar lebih rapi
+  dataKonsumen  DataKonsumen?
+  dataKendaraan DataKendaraan?
+  dataPinjaman  DataPinjaman?
+
+  // Relasi: Dokumen yang di-upload
+  dokumen       Dokumen[]
+  
+  // Relasi: Catatan histori
+  histori       HistoriApproval[]
+}
+
+// Data Konsumen (sesuai form)
+model DataKonsumen {
+  id                String  @id @default(cuid())
+  pengajuanId       String  @unique // Relasi 1-ke-1
+  pengajuan         PengajuanKredit @relation(fields: [pengajuanId], references: [id], onDelete: Cascade)
+  
+  nama              String
+  nik               String
+  tanggalLahir      DateTime
+  statusPerkawinan  String
+  dataPasangan      String? // Bisa JSON atau text
+}
+
+// Data Kendaraan (sesuai form)
+model DataKendaraan {
+  id            String  @id @default(cuid())
+  pengajuanId   String  @unique // Relasi 1-ke-1
+  pengajuan     PengajuanKredit @relation(fields: [pengajuanId], references: [id], onDelete: Cascade)
+
+  dealer          String
+  merkKendaraan   String
+  modelKendaraan  String
+  tipeKendaraan   String
+  warnaKendaraan  String
+  hargaKendaraan  Float
+}
+
+// Data Pinjaman (sesuai form)
+model DataPinjaman {
+  id              String  @id @default(cuid())
+  pengajuanId     String  @unique // Relasi 1-ke-1
+  pengajuan       PengajuanKredit @relation(fields: [pengajuanId], references: [id], onDelete: Cascade)
+  
+  asuransi        String
+  downPayment     Float
+  lamaKreditBulan Int
+  angsuranBulanan Float
+}
+
+// Model untuk menyimpan file yang di-upload
+model Dokumen {
+  id          String    @id @default(cuid())
+  pengajuanId String
+  pengajuan   PengajuanKredit @relation(fields: [pengajuanId], references: [id], onDelete: Cascade)
+
+  // Jenis dokumen: KTP, SPK, BUKTI_BAYAR, KARTU_KELUARGA
+  jenisDokumen String 
+  urlFile      String // Path ke file (bisa S3, GCS, atau lokal)
+  uploadedAt   DateTime  @default(now())
+}
+
+// Model untuk mencatat histori (Penting untuk audit)
+model HistoriApproval {
+  id          String   @id @default(cuid())
+  pengajuanId String
+  pengajuan   PengajuanKredit @relation(fields: [pengajuanId], references: [id], onDelete: Cascade)
+  
+  timestamp   DateTime @default(now())
+  statusDari  String   // Status sebelumnya
+  statusKe    String   // Status baru
+  catatan     String?  // cth: "Data pasangan tidak valid"
+  olehUser    String   // Username yang melakukan aksi
+}
